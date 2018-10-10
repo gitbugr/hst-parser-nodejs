@@ -4,6 +4,7 @@ import path from 'path';
 const hstReader = new HSTReader(path.join(__dirname, '../data/EURGBP.hst'));
 
 console.log(hstReader.symbol);
+console.log(hstReader.getNextCandle()); // first candle
 console.log(hstReader.getNextCandle());
 console.log(hstReader.getNextCandle());
 console.log(hstReader.getPrevCandle());

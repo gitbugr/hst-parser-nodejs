@@ -81,7 +81,7 @@ export default class HSTReader {
     }
     getPrevCandle(): Candle {
         if(this.byteOffset - this.candleByteSize >= 148) {
-            this.byteOffset -= this.candleByteSize * 2;
+            this.byteOffset -= this.candleByteSize;
             this.candleNumber -= 1;
             this.endOfFile = false;
         }
@@ -108,7 +108,7 @@ export default class HSTReader {
             throw new Error('Could not find candle');
         }
     }
-    readCandle(): Candle {
+    private readCandle(): Candle {
         if(this.byteOffset < 148) {
             this.byteOffset = 148;
         }
@@ -127,7 +127,7 @@ export default class HSTReader {
         fs.readSync(this.fd, close, 0, 8, this.byteOffset += 8);
         fs.readSync(this.fd, volume, 0, 8, this.byteOffset += 8);
 
-        this.byteOffset += 8;
+        this.byteOffset -= this.candleByteSize - 8;
 
         return {
             timestamp: new Date(timestamp.readInt32LE(0) * 1000),
