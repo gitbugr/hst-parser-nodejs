@@ -1,10 +1,3 @@
-/**
- * HST File Reader Class
- * 
- * .hst specficiation provided by Simon Gniadkowski 
- * posted at - https://www.mql5.com/en/forum/149178
- */
-
 // packages
 import * as fs from 'fs';
 // interfaces

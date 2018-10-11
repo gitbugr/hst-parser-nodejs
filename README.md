@@ -1,20 +1,31 @@
-# HST File Parser
+<img src="hst_parser.png" height="80px" />
 
-Under Development: So far, only file version 400 supported. I plan to package this for npm.
+# HST File Parser
 
 ### Summary
 
-MetaTrader History (.hst) file format support for node.js
+Parser for the MetaTrader History (.hst) File Format in Node.js
 
-_only support for reading .hst files for now. If you need write support, shoot me a message._
+### Table of Contents
+
+  * [Summary](#)
+  * [Table of Contents](#)
+      * [Installation](#)
+  * [Usage](#)
+  * [Author](#)
+  * [Thank You](#)
+  * [Licence](#)
 
 ### Usage
 
 ### Author
+
 Kyron Taylor (gitbugr)
 
 ### Thank You
-Simon Gniadkowski: (HTS File Specification)[https://www.mql5.com/en/forum/149178]
 
-### Licence
+Simon Gniadkowski: [HTS File Specification](https://www.mql5.com/en/forum/149178)
+
+### Licence
+
 MIT
