@@ -1,34 +1,39 @@
+"use strict";
+
 // packages
-import * as fs from 'fs';
+import * as fs from "fs";
 // interfaces
-import Candle from './interfaces/Candle';
+import Candle from "./interfaces/candle";
+// parser dataa
+import parserData from "./parser_data";
 
 export default class HSTReader {
-    // Variables
-    fd: number;
-    byteOffset: number;
-    candleByteSize: number;
-    candleNumber: number;
-    filesize: number;
-    endOfFile: boolean;
     // File Headers
-    version: number;
-    symbol: string;
-    period: number;
-    start: Date;
+    public version: number;
+    public symbol: string;
+    public period: number;
+    public start: Date;
+    // Variables
+    public candleNumber: number;
+    public endOfFile: boolean;
+    private fd: number;
+    private byteOffset: number;
+    private candleByteSize: number;
+    private filesize: number;
 
-    // Constructor reads headers of specified file and stores
-    // into class variables.
+    /**
+     * @param {string} filename Reads headers of specified file and stores into class variables.
+     */
     constructor(filename: string) {
         // check if file exists
-        if(!fs.existsSync(filename)) {
+        if (!fs.existsSync(filename)) {
             throw new Error(`Can't find this file: ${filename}`);
         }
         // open file and store file descriptor as variable
         this.fd = fs.openSync(filename, 'r');
         // verify filesize is larger than header size
         this.filesize = fs.statSync(filename).size;
-        if(this.filesize < 148) {
+        if (this.filesize < 148) {
             throw new Error(`Damn, that's a small file. Too small.`);
         }
         // set up buffers
@@ -36,7 +41,7 @@ export default class HSTReader {
         const symbol: Buffer = Buffer.alloc(12);
         const period: Buffer = Buffer.alloc(4);
         const start: Buffer = Buffer.alloc(4);
-        
+
         // scoped byte offset
         let byteOffset: number = 0;
         // read version number
@@ -49,7 +54,7 @@ export default class HSTReader {
         fs.readSync(this.fd, start, 0, 4, 148);
         // convert to js types and store in class variables
         this.version = version.readInt32LE(0);
-        this.symbol = symbol.toString('utf8');
+        this.symbol = symbol.toString("utf8");
         this.period = period.readInt32LE(0);
         this.start = new Date(start.readInt32LE(0) * 1000);
         this.endOfFile = false;
@@ -58,12 +63,17 @@ export default class HSTReader {
         this.byteOffset = 148 - this.candleByteSize;
         this.candleNumber = 0;
     }
-    // checks if version header is as expected
-    isValidFormat(): boolean {
-        return this.version === 400 || this.version === 401;
+    /**
+     * @return {boolean} checks if parser supports file version
+     */
+    public isValidFormat(): boolean {
+        return Object.keys(parserData).indexOf(this.version.toString()) !== -1;
     }
-    getNextCandle(): Candle {
-        if(this.byteOffset + this.candleByteSize <= this.filesize) {
+    /**
+     * @return {Candle} returns the next candle in the file
+     */
+    public getNextCandle(): Candle {
+        if (this.byteOffset + this.candleByteSize <= this.filesize) {
             this.byteOffset += this.candleByteSize;
             this.candleNumber += 1;
             this.endOfFile = false;
@@ -72,25 +82,36 @@ export default class HSTReader {
         }
         return this.readCandle();
     }
-    getPrevCandle(): Candle {
-        if(this.byteOffset - this.candleByteSize >= 148) {
+    /**
+     * @return {Candle} returns the previous candle in the file
+     */
+    public getPrevCandle(): Candle {
+        if (this.byteOffset - this.candleByteSize >= 148) {
             this.byteOffset -= this.candleByteSize;
             this.candleNumber -= 1;
             this.endOfFile = false;
         }
         return this.readCandle();
     }
-    getCandleNumber(candleNumber: number): Candle {
+    /**
+     * @param {number} candleNumber finds candle from number
+     * @return {Candle} returns specified candle
+     */
+    public getCandleNumber(candleNumber: number): Candle {
         this.candleNumber = candleNumber;
         this.byteOffset = 148 + (candleNumber * this.candleByteSize);
         return this.readCandle();
     }
-    // date search function
-    // smart function. great function. the best function.
-    getCandleAt(date: Date, startDate: Date = this.start, i: number = 0): Candle {
+    /**
+     * @param {Date} date finds candle at specified date and time
+     * @param {Date=} startDate optional: due to missing candles, we try to find based on most likely position
+     * @param {number=} i optional: count attempts to limit search area
+     * @return {Candle} returns the candle if found
+     */
+    public getCandleAt(date: Date, startDate: Date = this.start, i: number = 0): Candle {
         const candleOffset = (date.getTime() - startDate.getTime()) / (60000 * this.period);
-        let candle = this.getCandleNumber(this.candleNumber + candleOffset)
-        if(candle.timestamp.getTime() == date.getTime()) {
+        let candle = this.getCandleNumber(this.candleNumber + candleOffset);
+        if (candle.timestamp.getTime() == date.getTime()) {
             return candle;
         } else if (i < 50 && candle.timestamp.getTime()) {
             return this.getCandleAt(date, candle.timestamp, i + 1);
@@ -98,39 +119,40 @@ export default class HSTReader {
             candle = this.getCandleNumber(Math.floor(this.candleNumber / 2));
             return this.getCandleAt(date, candle.timestamp, i + 1);
         } else {
-            throw new Error('Could not find candle');
+            throw new Error("Could not find candle");
         }
     }
+    /**
+     * @return {Candle} returns candle at byte position
+     */
     private readCandle(): Candle {
-        if(this.byteOffset < 148) {
+        if (this.byteOffset < 148) {
             this.byteOffset = 148;
         }
 
-        const timestamp: Buffer = Buffer.alloc(4);
-        const open: Buffer = Buffer.alloc(8);
-        const low: Buffer = Buffer.alloc(8);
-        const high: Buffer = Buffer.alloc(8);
-        const close: Buffer = Buffer.alloc(8);
-        const volume: Buffer = Buffer.alloc(8);
-
-        fs.readSync(this.fd, timestamp, 0, 4, this.byteOffset);
-        fs.readSync(this.fd, open, 0, 8, this.byteOffset += 4);
-        fs.readSync(this.fd, low, 0, 8, this.byteOffset += 8);
-        fs.readSync(this.fd, high, 0, 8, this.byteOffset += 8);
-        fs.readSync(this.fd, close, 0, 8, this.byteOffset += 8);
-        fs.readSync(this.fd, volume, 0, 8, this.byteOffset += 8);
-
-        this.byteOffset -= this.candleByteSize - 8;
-
-        return {
-            timestamp: new Date(timestamp.readInt32LE(0) * 1000),
-            open: open.readDoubleLE(0),
-            low: low.readDoubleLE(0),
-            high: high.readDoubleLE(0),
-            close: close.readDoubleLE(0),
-            volume: volume.readDoubleLE(0),
-            spread: 0, 
-            realVolume: 0,
+        const parserFunctions: any = {
+            date: (buffer: Buffer) => {
+                let timestamp: number = buffer.readInt32LE(0);
+                timestamp = timestamp < 9999999999 ? timestamp * 1000 : timestamp;
+                return new Date(timestamp);
+            },
+            double: (buffer: Buffer) => buffer.readDoubleLE(0),
+            i32: (buffer: Buffer) => buffer.readInt32LE(0),
+            undefined: (buffer: Buffer) => undefined,
         };
+
+        const candleData: any = {};
+
+        Object.entries(parserData[this.version]).forEach(([key, data]) => {
+            if (typeof data.value !== "undefined") {
+                candleData[key] = data.value;
+            } else {
+                candleData[key] = Buffer.alloc(data.size || 0);
+                fs.readSync(this.fd, candleData[key], 0, data.size || 0, this.byteOffset + (data.position || 0));
+                candleData[key] = parserFunctions[data.type || "undefined"](candleData[key]);
+            }
+        });
+
+        return candleData;
     }
 }
