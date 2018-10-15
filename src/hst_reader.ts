@@ -7,7 +7,7 @@ import Candle from "./interfaces/candle";
 // parser dataa
 import parserData from "./parser_data";
 
-export default class HSTReader {
+export default class HSTParser {
     // File Headers
     public version: number;
     public symbol: string;
@@ -15,7 +15,6 @@ export default class HSTReader {
     public start: Date;
     // Variables
     public candleNumber: number;
-    public endOfFile: boolean;
     private fd: number;
     private byteOffset: number;
     private candleByteSize: number;
@@ -27,14 +26,14 @@ export default class HSTReader {
     constructor(filename: string) {
         // check if file exists
         if (!fs.existsSync(filename)) {
-            throw new Error(`Can't find this file: ${filename}`);
+            throw new Error("Could not find file");
         }
         // open file and store file descriptor as variable
-        this.fd = fs.openSync(filename, 'r');
+        this.fd = fs.openSync(filename, "r+");
         // verify filesize is larger than header size
         this.filesize = fs.statSync(filename).size;
         if (this.filesize < 148) {
-            throw new Error(`Damn, that's a small file. Too small.`);
+            throw new Error("File too small");
         }
         // set up buffers
         const version: Buffer = Buffer.alloc(4);
@@ -57,7 +56,6 @@ export default class HSTReader {
         this.symbol = symbol.toString("utf8");
         this.period = period.readInt32LE(0);
         this.start = new Date(start.readInt32LE(0) * 1000);
-        this.endOfFile = false;
         // set byte offset to end of header-block
         this.candleByteSize = this.version === 400 ? 44 : 60;
         this.byteOffset = 148 - this.candleByteSize;
@@ -76,11 +74,22 @@ export default class HSTReader {
         if (this.byteOffset + this.candleByteSize <= this.filesize) {
             this.byteOffset += this.candleByteSize;
             this.candleNumber += 1;
-            this.endOfFile = false;
         } else {
-            this.endOfFile = true;
+            throw new Error("Already at end of file");
         }
         return this.readCandle();
+    }
+    /**
+     * @return {Promise} returns promise that resolves to the next candle in the file
+     */
+    public getNextCandleAsync(): Promise<Candle> {
+        return new Promise((resolve, reject) => {
+            try {
+                resolve(this.getNextCandle());
+            } catch (err) {
+                reject(err);
+            }
+        });
     }
     /**
      * @return {Candle} returns the previous candle in the file
@@ -89,9 +98,22 @@ export default class HSTReader {
         if (this.byteOffset - this.candleByteSize >= 148) {
             this.byteOffset -= this.candleByteSize;
             this.candleNumber -= 1;
-            this.endOfFile = false;
+        } else {
+            throw new Error("Already at start of file");
         }
         return this.readCandle();
+    }
+    /**
+     * @return {Promise} returns promise that resolves to the previous candle in the file
+     */
+    public getPrevCandleAsync(): Promise<Candle> {
+        return new Promise((resolve, reject) => {
+            try {
+                resolve(this.getPrevCandle());
+            } catch (err) {
+                reject(err);
+            }
+        });
     }
     /**
      * @param {number} candleNumber finds candle from number
@@ -99,8 +121,25 @@ export default class HSTReader {
      */
     public getCandleNumber(candleNumber: number): Candle {
         this.candleNumber = candleNumber;
-        this.byteOffset = 148 + (candleNumber * this.candleByteSize);
-        return this.readCandle();
+        const newByteOffset = 148 + (candleNumber * this.candleByteSize);
+        if (newByteOffset < this.filesize) { 
+            return this.readCandle();
+        } else {
+            throw new Error("File too small");
+        }
+    }
+    /**
+     * @param {number} candleNumber finds candle from number
+     * @return {Promise} returns promise that resolves to specified candle
+     */
+    public getCandleNumberAsync(candleNumber: number): Promise<Candle> {
+        return new Promise((resolve, reject) => {
+            try {
+                resolve(this.getCandleNumber(candleNumber));
+            } catch (err) {
+                reject(err);
+            }
+        });
     }
     /**
      * @param {Date} date finds candle at specified date and time
@@ -119,8 +158,21 @@ export default class HSTReader {
             candle = this.getCandleNumber(Math.floor(this.candleNumber / 2));
             return this.getCandleAt(date, candle.timestamp, i + 1);
         } else {
-            throw new Error("Could not find candle");
+            throw new Error("Candle not found");
         }
+    }
+    /**
+     * @param {Date} date finds candle at specified date and time
+     * @return {Promise} returns promise, resolves to Candle object
+     */
+    public getCandleAtAsync(date: Date): Promise<Candle> {
+        return new Promise((resolve, reject) => {
+            try {
+                resolve(this.getCandleAt(date));
+            } catch (err) {
+                reject(err);
+            }
+        });
     }
     /**
      * @return {Candle} returns candle at byte position
@@ -133,7 +185,7 @@ export default class HSTReader {
         const parserFunctions: any = {
             date: (buffer: Buffer) => {
                 let timestamp: number = buffer.readInt32LE(0);
-                timestamp = timestamp < 9999999999 ? timestamp * 1000 : timestamp;
+                timestamp = this.version === 400 ? timestamp * 1000 : timestamp;
                 return new Date(timestamp);
             },
             double: (buffer: Buffer) => buffer.readDoubleLE(0),
@@ -157,6 +209,4 @@ export default class HSTReader {
     }
 }
 
-module.exports = {
-    HSTReader,
-};
+module.exports = HSTParser;

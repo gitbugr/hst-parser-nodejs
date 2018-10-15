@@ -2,7 +2,7 @@
   "name": "hst-parser",
   "description": "Parser for the MetaTrader History (.hst) File Format",
   "author": "gitbugr <kyronataylor@gmail.com>",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "license": "MIT",
   "main": "dist/hst_reader.js",
   "repository": {
