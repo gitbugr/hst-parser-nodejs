@@ -8,13 +8,13 @@ Parser for the MetaTrader History (.hst) File Format in Node.js
 
 ### Table of Contents
 
-  * [Summary](#)
-  * [Table of Contents](#)
-  * [Installation](#)
-  * [Usage](#)
-  * [Author](#)
-  * [Thank You](#)
-  * [Licence](#)
+  * [Summary](#summary)
+  * [Table of Contents](#table-of-contents)
+  * [Installation](#installation)
+  * [Usage](#usage)
+  * [Author](#author)
+  * [Thank You](#thank-you)
+  * [Licence](#licence)
 
 ### Installation
 
@@ -29,14 +29,14 @@ bower install hst-parser --save
 ### Usage
 
 ```javascript
-const HSTReader = require('hst-parser').HSTReader;
+const HSTParser = require('hst-parser');
 
-const tradeHistory = new HSTReader('./data/USDGBP.hst'); // your .hst file
+const tradeHistory = new HSTParser('./data/USDGBP.hst'); // your .hst file
 ```
 
 
 #### Variables
-the HSTReader class exposes some variables for you to use
+the HSTParser class exposes some variables for you to use
 ```javascript
 console.log(tradeHistory.version); // file version from headers
 // example output: 400
@@ -77,7 +77,7 @@ Example:
 
 #### isValidFormat()
 
-Checks if file can be parsed by HSTReader. (currently supports versions 400 and 401 of .hst files)
+Checks if file can be parsed by HSTParser. (currently supports versions 400 and 401 of .hst files)
 ```javascript
 if(tradeHistory.isValidFormat()) {
   // do stuff
@@ -94,11 +94,35 @@ console.log(tradeHistory.getCandleNumber(200));
 // output: {Candle}
 ```
 
+#### getCandleNumberAsync(candleNumber)
+
+Returns promise that resolves to candle data at specified position
+```javascript
+tradeHistory.getCandleNumber(200).then(candle => {
+  console.log(candle);
+}).catch(err => {
+  console.log(err);
+})
+// output: {Candle}
+```
+
 #### getNextCandle()
 
 Returns next set of candle data
 ```javascript
 console.log(tradeHistory.getNextCandle());
+// output: {Candle}
+```
+
+#### getNextCandleAsync()
+
+Returns promise that resolves to next set of candle data
+```javascript
+tradeHistory.getNextCandleAsync().then(candle => {
+  console.log(candle);
+}).catch(err => {
+  console.log(err);
+})
 // output: {Candle}
 ```
 
@@ -110,12 +134,37 @@ console.log(tradeHistory.getPrevCandle());
 // output: {Candle}
 ```
 
+#### getPrevCandleAsync()
+
+Returns promise that resolves to previous set of candle data
+```javascript
+tradeHistory.getPrevCandleAsync().then(candle => {
+  console.log(candle);
+}).catch(err => {
+  console.log(err);
+})
+// output: {Candle}
+```
+
 #### getCandleAt(date, ...[startDate, i])
 
 Returns set of candle data at specified date and time
 ```javascript
 const myBirthday = new Date(1996, 0, 26);
 console.log(tradeHistory.getCandleAt(myBirthday));
+// output: {Candle}
+```
+
+#### getCandleAtAsync(date)
+
+Returns promise that resolves to set of candle data at specified date and time
+```javascript
+const myBirthday = new Date(1996, 0, 26);
+tradeHistory.getCandleAt(myBirthday).then(candle => {
+  console.log(candle);
+}).catch(err => {
+  console.log(err);
+})
 // output: {Candle}
 ```
 
