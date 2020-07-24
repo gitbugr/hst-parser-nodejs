@@ -4,7 +4,7 @@
   "author": "gitbugr <kyronataylor@gmail.com>",
   "version": "0.2.2",
   "license": "MIT",
-  "main": "dist/hst_parser.js",
+  "main": "dist/hst_reader.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gitbugr/hst-parser-nodejs.git"
